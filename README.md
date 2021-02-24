@@ -1,4 +1,4 @@
-# Rust MQTT-SN [![crates.io](https://img.shields.io/crates/v/mqtt-sn.svg)](https://crates.io/crates/mqtt-sn) [![Documentation](https://docs.rs/mqtt-sn/badge.svg)](https://docs.rs/mqtt-sn)
+# Rust MQTT-SN [![crates.io](https://img.shields.io/crates/v/mqtt-sn.svg)](https://crates.io/crates/mqtt-sn) [![Documentation](https://docs.rs/mqtt-sn/badge.svg)](https://docs.rs/mqtt-sn) [![Cargo Test](https://github.com/henrikssn/rust-mqtt-sn/actions/workflows/run-test.yml/badge.svg)](https://github.com/henrikssn/rust-mqtt-sn/actions/workflows/run-test.yml)
 
 ## Introduction
 
