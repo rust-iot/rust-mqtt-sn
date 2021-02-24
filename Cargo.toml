@@ -13,7 +13,7 @@ exclude = [
 
 [dependencies]
 bitfield = "0.13"
-heapless = "0.5"
+heapless = "0.6"
 byte = "0.2"
 
 [dev-dependencies]
