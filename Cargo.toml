@@ -4,7 +4,12 @@ version = "0.1.0"
 authors = ["Erik Henriksson <erikhenrikssn@gmail.com>"]
 edition = "2018"
 license = "MPL-2.0"
+description = "Partial Rust implementation of the MQTT-SN standard"
 repository = "https://github.com/henrikssn/rust-mqtt-sn"
+exclude = [
+    ".github/*",
+    ".gitignore",
+]
 
 [dependencies]
 bitfield = "0.13.2"
