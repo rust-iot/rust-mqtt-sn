@@ -12,9 +12,9 @@ exclude = [
 ]
 
 [dependencies]
-bitfield = "0.13.2"
-heapless = "0.5.6"
-byte = "0.2.4"
+bitfield = "0.13"
+heapless = "0.5"
+byte = "0.2"
 
 [dev-dependencies]
-assert_hex = "*"
+assert_hex = "0.2"
