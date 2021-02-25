@@ -1,4 +1,4 @@
-name: Cargo Test
+name: tests
 on: [push, pull_request]
 
 jobs:
@@ -16,6 +16,21 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: clippy
+  format:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v2
+    - name: Install Rust (stable)
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        components: rustfmt
+        override: true
+    - name: Check Format
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt --check
   test:
     runs-on: ubuntu-latest
     steps:
