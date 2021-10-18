@@ -20,6 +20,12 @@ For more information, please refer to the [API Reference].
 
 [API Reference]: https://docs.rs/mqtt-sn
 
+## Changelog
+
+### 0.2.0
+
+- Add support for `defmt` (behind the `defmt-impl` feature).
+
 
 ## License
 
