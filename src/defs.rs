@@ -127,7 +127,7 @@ impl TryWrite for MaybeForwardedMessage {
 impl TryRead<'_> for MaybeForwardedMessage {
     fn try_read(bytes: &[u8], _ctx: ()) -> byte::Result<(Self, usize)> {
         let offset = &mut 0;
-        check_len(&bytes, 2)?;
+        check_len(bytes, 2)?;
         let msg_type: u8 = bytes.read(&mut 1usize)?;
         if msg_type == 0xfe {
             let fw_msg: ForwardedMessage = bytes.read(offset)?;
