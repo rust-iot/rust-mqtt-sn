@@ -6,9 +6,10 @@ use core::ops::{Deref, DerefMut};
 
 use bitfield::{bitfield_bitrange, bitfield_fields};
 use byte::{check_len, BytesExt, TryRead, TryWrite};
-use heapless::{consts::*, String};
+use heapless::String;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Flags(u8);
 bitfield_bitrange! {struct Flags(u8)}
 
@@ -39,6 +40,7 @@ impl TryRead<'_> for Flags {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ReturnCode {
     Accepted,
     Rejected(RejectedReason),
@@ -84,6 +86,7 @@ impl TryRead<'_> for ReturnCode {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum RejectedReason {
     Congestion,
     InvalidTopicId,
@@ -92,6 +95,7 @@ pub enum RejectedReason {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum MaybeForwardedMessage {
     ForwardedMessage(ForwardedMessage),
     Message(Message),
@@ -103,9 +107,9 @@ impl From<ForwardedMessage> for MaybeForwardedMessage {
     }
 }
 
-impl From<Message> for MaybeForwardedMessage {
-    fn from(msg: Message) -> Self {
-        Self::Message(msg)
+impl<M: Into<Message>> From<M> for MaybeForwardedMessage {
+    fn from(msg: M) -> Self {
+        Self::Message(msg.into())
     }
 }
 
@@ -136,6 +140,7 @@ impl TryRead<'_> for MaybeForwardedMessage {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct ForwardedMessage {
     pub ctrl: u8,
     pub wireless_node_id: WirelessNodeId,
@@ -171,7 +176,8 @@ impl TryRead<'_> for ForwardedMessage {
 }
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
-pub struct WirelessNodeId(heapless::String<U16>);
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct WirelessNodeId(heapless::String<16>);
 
 impl WirelessNodeId {
     pub fn new() -> Self {
@@ -186,7 +192,7 @@ impl From<&str> for WirelessNodeId {
 }
 
 impl Deref for WirelessNodeId {
-    type Target = heapless::String<U16>;
+    type Target = heapless::String<16>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -220,6 +226,7 @@ impl TryRead<'_, usize> for WirelessNodeId {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Message {
     SearchGw(SearchGw),
     GwInfo(GwInfo),
@@ -340,6 +347,7 @@ impl TryRead<'_> for Message {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SearchGw {
     pub radius: u8,
 }
@@ -370,6 +378,7 @@ impl TryRead<'_> for SearchGw {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct GwInfo {
     pub gw_id: u8,
 }
@@ -400,6 +409,7 @@ impl TryRead<'_> for GwInfo {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Connect {
     pub flags: Flags,
     pub duration: u16,
@@ -445,7 +455,8 @@ impl TryRead<'_> for Connect {
 }
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
-pub struct ClientId(heapless::String<U16>);
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct ClientId(heapless::String<64>);
 
 impl ClientId {
     pub fn new() -> Self {
@@ -460,7 +471,7 @@ impl From<&str> for ClientId {
 }
 
 impl Deref for ClientId {
-    type Target = heapless::String<U16>;
+    type Target = heapless::String<64>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -487,13 +498,14 @@ impl TryRead<'_, usize> for ClientId {
         let mut s = String::new();
         s.push_str(bytes.read_with(offset, byte::ctx::Str::Len(len))?)
             .map_err(|_e| byte::Error::BadInput {
-                err: "client_id longer than 16 bytes",
+                err: "client_id longer than 64 bytes",
             })?;
         Ok((ClientId(s), *offset))
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct ConnAck {
     pub code: ReturnCode,
 }
@@ -524,6 +536,7 @@ impl TryRead<'_> for ConnAck {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Register {
     pub topic_id: u16,
     pub msg_id: u16,
@@ -566,7 +579,8 @@ impl TryRead<'_> for Register {
 }
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
-pub struct TopicName(heapless::String<U256>);
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct TopicName(heapless::String<256>);
 
 impl TopicName {
     pub fn from(s: &str) -> Self {
@@ -578,7 +592,7 @@ impl TopicName {
 }
 
 impl Deref for TopicName {
-    type Target = heapless::String<U256>;
+    type Target = heapless::String<256>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -618,6 +632,7 @@ impl TryRead<'_, usize> for TopicName {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct RegAck {
     pub topic_id: u16,
     pub msg_id: u16,
@@ -654,6 +669,7 @@ impl TryRead<'_> for RegAck {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Publish {
     pub flags: Flags,
     pub topic_id: u16,
@@ -699,7 +715,8 @@ impl TryRead<'_> for Publish {
 }
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
-pub struct PublishData(heapless::String<U256>);
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct PublishData(heapless::String<256>);
 
 impl PublishData {
     pub fn new() -> Self {
@@ -714,7 +731,7 @@ impl From<&str> for PublishData {
 }
 
 impl Deref for PublishData {
-    type Target = heapless::String<U256>;
+    type Target = heapless::String<256>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -748,6 +765,7 @@ impl TryRead<'_, usize> for PublishData {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct PubAck {
     pub topic_id: u16,
     pub msg_id: u16,
@@ -783,6 +801,7 @@ impl TryRead<'_> for PubAck {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct PingReq {
     pub client_id: ClientId,
 }
@@ -819,6 +838,7 @@ impl TryRead<'_> for PingReq {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct PingResp {}
 
 impl TryWrite for PingResp {

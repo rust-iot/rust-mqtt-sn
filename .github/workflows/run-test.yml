@@ -45,7 +45,7 @@ jobs:
         toolchain: stable
         override: true
         target: thumbv6m-none-eabi
-    - name: Build HAL
+    - name: Build
       run: |
         set -ex
         cargo build
