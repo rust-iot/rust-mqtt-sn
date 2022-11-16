@@ -1,8 +1,8 @@
 [package]
 name = "mqtt-sn"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Erik Henriksson <erikhenrikssn@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MPL-2.0"
 description = "Partial Rust implementation of the MQTT-SN standard"
 repository = "https://github.com/rust-iot/rust-mqtt-sn"

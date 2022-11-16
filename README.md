@@ -22,6 +22,10 @@ For more information, please refer to the [API Reference].
 
 ## Changelog
 
+### 0.2.2
+
+- Add `Subscribe`/`SubAck` and `Unsubscribe`/`UnsubAck` messages.
+
 ### 0.2.0
 
 - Add support for `defmt` (behind the `defmt-impl` feature).

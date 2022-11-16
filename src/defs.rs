@@ -8,6 +8,10 @@ use bitfield::{bitfield_bitrange, bitfield_fields};
 use byte::{check_len, BytesExt, TryRead, TryWrite};
 use heapless::String;
 
+pub trait MsgType {
+    const MSG_TYPE: u8;
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Flags(u8);
@@ -236,6 +240,10 @@ pub enum Message {
     RegAck(RegAck),
     Publish(Publish),
     PubAck(PubAck),
+    Subscribe(Subscribe),
+    SubAck(SubAck),
+    Unsubscribe(Unsubscribe),
+    UnsubAck(UnsubAck),
     PingReq(PingReq),
     PingResp(PingResp),
 }
@@ -288,6 +296,30 @@ impl From<PubAck> for Message {
     }
 }
 
+impl From<Subscribe> for Message {
+    fn from(msg: Subscribe) -> Self {
+        Message::Subscribe(msg)
+    }
+}
+
+impl From<SubAck> for Message {
+    fn from(msg: SubAck) -> Self {
+        Message::SubAck(msg)
+    }
+}
+
+impl From<Unsubscribe> for Message {
+    fn from(msg: Unsubscribe) -> Self {
+        Message::Unsubscribe(msg)
+    }
+}
+
+impl From<UnsubAck> for Message {
+    fn from(msg: UnsubAck) -> Self {
+        Message::UnsubAck(msg)
+    }
+}
+
 impl From<PingReq> for Message {
     fn from(msg: PingReq) -> Self {
         Message::PingReq(msg)
@@ -312,6 +344,10 @@ impl TryWrite for Message {
             Message::RegAck(msg) => bytes.write(offset, msg),
             Message::Publish(msg) => bytes.write(offset, msg),
             Message::PubAck(msg) => bytes.write(offset, msg),
+            Message::Subscribe(msg) => bytes.write(offset, msg),
+            Message::SubAck(msg) => bytes.write(offset, msg),
+            Message::Unsubscribe(msg) => bytes.write(offset, msg),
+            Message::UnsubAck(msg) => bytes.write(offset, msg),
             Message::PingReq(msg) => bytes.write(offset, msg),
             Message::PingResp(msg) => bytes.write(offset, msg),
         }?;
@@ -333,6 +369,10 @@ impl TryRead<'_> for Message {
                 0x0b => Message::RegAck(bytes.read(offset)?),
                 0x0c => Message::Publish(bytes.read(offset)?),
                 0x0d => Message::PubAck(bytes.read(offset)?),
+                Subscribe::MSG_TYPE => Message::Subscribe(bytes.read(offset)?),
+                SubAck::MSG_TYPE => Message::SubAck(bytes.read(offset)?),
+                Unsubscribe::MSG_TYPE => Message::Unsubscribe(bytes.read(offset)?),
+                UnsubAck::MSG_TYPE => Message::UnsubAck(bytes.read(offset)?),
                 0x16 => Message::PingReq(bytes.read(offset)?),
                 0x17 => Message::PingResp(bytes.read(offset)?),
                 _t => {
@@ -802,6 +842,200 @@ impl TryRead<'_> for PubAck {
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum TopicNameOrId {
+    Name(TopicName),
+    Id(u16),
+}
+
+impl TryWrite for TopicNameOrId {
+    fn try_write(self, bytes: &mut [u8], _ctx: ()) -> byte::Result<usize> {
+        let offset = &mut 0;
+        match self {
+            Self::Id(id) => bytes.write_with(offset, id, byte::ctx::BE)?,
+            Self::Name(name) => bytes.write(offset, name)?,
+        }
+        Ok(*offset)
+    }
+}
+
+impl TryRead<'_, (Flags, usize)> for TopicNameOrId {
+    fn try_read(bytes: &[u8], ctx: (Flags, usize)) -> byte::Result<(Self, usize)> {
+        let offset = &mut 0;
+        Ok((
+            if ctx.0.topic_id_type() == 0 {
+                Self::Name(bytes.read_with(offset, ctx.1)?)
+            } else {
+                Self::Id(bytes.read_with(offset, byte::ctx::BE)?)
+            },
+            *offset,
+        ))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct Subscribe {
+    pub flags: Flags,
+    pub msg_id: u16,
+    pub topic: TopicNameOrId,
+}
+
+impl MsgType for Subscribe {
+    const MSG_TYPE: u8 = 0x12;
+}
+
+impl TryWrite for Subscribe {
+    fn try_write(self, bytes: &mut [u8], _ctx: ()) -> byte::Result<usize> {
+        let offset = &mut 1; // len is written last
+        bytes.write(offset, Self::MSG_TYPE)?;
+        bytes.write(offset, self.flags)?;
+        bytes.write_with(offset, self.msg_id, byte::ctx::BE)?;
+        bytes.write(offset, self.topic)?;
+        bytes.write(&mut 0, *offset as u8)?; // len
+        Ok(*offset)
+    }
+}
+
+impl TryRead<'_> for Subscribe {
+    fn try_read(bytes: &[u8], _ctx: ()) -> byte::Result<(Self, usize)> {
+        let offset = &mut 0;
+        let len: u8 = bytes.read(offset)?;
+        *offset += 1; // msg type
+        let flags = bytes.read(offset)?;
+        Ok((
+            Self {
+                flags,
+                msg_id: bytes.read_with(offset, byte::ctx::BE)?,
+                topic: bytes.read_with(offset, (flags, len as usize - 5))?,
+            },
+            *offset,
+        ))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct SubAck {
+    pub flags: Flags,
+    pub msg_id: u16,
+    pub topic_id: u16,
+    pub code: ReturnCode,
+}
+
+impl MsgType for SubAck {
+    const MSG_TYPE: u8 = 0x13;
+}
+
+impl TryWrite for SubAck {
+    fn try_write(self, bytes: &mut [u8], _ctx: ()) -> byte::Result<usize> {
+        let offset = &mut 0;
+        bytes.write(offset, 7u8)?; // len
+        bytes.write(offset, Self::MSG_TYPE)?;
+        bytes.write(offset, self.flags)?;
+        bytes.write_with(offset, self.topic_id, byte::ctx::BE)?;
+        bytes.write_with(offset, self.msg_id, byte::ctx::BE)?;
+        bytes.write(offset, self.code)?;
+        Ok(*offset)
+    }
+}
+
+impl TryRead<'_> for SubAck {
+    fn try_read(bytes: &[u8], _ctx: ()) -> byte::Result<(Self, usize)> {
+        let offset = &mut 0;
+        let _len: u8 = bytes.read(offset)?;
+        *offset += 1; // msg type
+        Ok((
+            Self {
+                flags: bytes.read(offset)?,
+                topic_id: bytes.read_with(offset, byte::ctx::BE)?,
+                msg_id: bytes.read_with(offset, byte::ctx::BE)?,
+                code: bytes.read(offset)?,
+            },
+            *offset,
+        ))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct Unsubscribe {
+    pub flags: Flags,
+    pub msg_id: u16,
+    pub topic: TopicNameOrId,
+}
+
+impl MsgType for Unsubscribe {
+    const MSG_TYPE: u8 = 0x14;
+}
+
+impl TryWrite for Unsubscribe {
+    fn try_write(self, bytes: &mut [u8], _ctx: ()) -> byte::Result<usize> {
+        let offset = &mut 1; // len is written last
+        bytes.write(offset, Self::MSG_TYPE)?;
+        bytes.write(offset, self.flags)?;
+        bytes.write_with(offset, self.msg_id, byte::ctx::BE)?;
+        bytes.write(offset, self.topic)?;
+        bytes.write(&mut 0, *offset as u8)?; // len
+        Ok(*offset)
+    }
+}
+
+impl TryRead<'_> for Unsubscribe {
+    fn try_read(bytes: &[u8], _ctx: ()) -> byte::Result<(Self, usize)> {
+        let offset = &mut 0;
+        let len: u8 = bytes.read(offset)?;
+        *offset += 1; // msg type
+        let flags = bytes.read(offset)?;
+        Ok((
+            Self {
+                flags,
+                msg_id: bytes.read_with(offset, byte::ctx::BE)?,
+                topic: bytes.read_with(offset, (flags, len as usize - 5))?,
+            },
+            *offset,
+        ))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct UnsubAck {
+    pub msg_id: u16,
+    pub code: ReturnCode,
+}
+
+impl MsgType for UnsubAck {
+    const MSG_TYPE: u8 = 0x15;
+}
+
+impl TryWrite for UnsubAck {
+    fn try_write(self, bytes: &mut [u8], _ctx: ()) -> byte::Result<usize> {
+        let offset = &mut 0;
+        bytes.write(offset, 5u8)?; // len
+        bytes.write(offset, Self::MSG_TYPE)?;
+        bytes.write_with(offset, self.msg_id, byte::ctx::BE)?;
+        bytes.write(offset, self.code)?;
+        Ok(*offset)
+    }
+}
+
+impl TryRead<'_> for UnsubAck {
+    fn try_read(bytes: &[u8], _ctx: ()) -> byte::Result<(Self, usize)> {
+        let offset = &mut 0;
+        let _len: u8 = bytes.read(offset)?;
+        *offset += 1; // msg type
+        Ok((
+            Self {
+                msg_id: bytes.read_with(offset, byte::ctx::BE)?,
+                code: bytes.read(offset)?,
+            },
+            *offset,
+        ))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct PingReq {
     pub client_id: ClientId,
 }
@@ -1038,6 +1272,108 @@ mod tests {
         });
         bytes.write(&mut len, expected.clone()).unwrap();
         assert_eq_hex!(&bytes[..len], [0x07u8, 0x0d, 0x12, 0x34, 0x56, 0x78, 0x02]);
+        let actual: Message = bytes.read(&mut 0).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn subscribe_encode_parse_id() {
+        let mut bytes = [0u8; 20];
+        let mut len = 0usize;
+        let mut flags = Flags::default();
+        flags.set_topic_id_type(0x2); // topic_id
+        let expected = Message::Subscribe(Subscribe {
+            flags,
+            msg_id: 0x1234,
+            topic: TopicNameOrId::Id(0x5678),
+        });
+        bytes.write(&mut len, expected.clone()).unwrap();
+        assert_eq_hex!(&bytes[..len], [0x07u8, 0x12, 0x02, 0x12, 0x34, 0x56, 0x78]);
+        let actual: Message = bytes.read(&mut 0).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn subscribe_encode_parse_name() {
+        let mut bytes = [0u8; 20];
+        let mut len = 0usize;
+        let expected = Message::Subscribe(Subscribe {
+            flags: Flags::default(),
+            msg_id: 0x1234,
+            topic: TopicNameOrId::Name("test".into()),
+        });
+        bytes.write(&mut len, expected.clone()).unwrap();
+        assert_eq_hex!(
+            &bytes[..len],
+            [0x09u8, 0x12, 0x00, 0x12, 0x34, b't', b'e', b's', b't']
+        );
+        let actual: Message = bytes.read(&mut 0).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn suback_encode_parse() {
+        let mut bytes = [0u8; 20];
+        let mut len = 0usize;
+        let expected = Message::SubAck(SubAck {
+            flags: Flags::default(),
+            topic_id: 0x1234,
+            msg_id: 0x5678,
+            code: RejectedReason::InvalidTopicId.into(),
+        });
+        bytes.write(&mut len, expected.clone()).unwrap();
+        assert_eq_hex!(
+            &bytes[..len],
+            [0x07u8, 0x13, 0x00, 0x12, 0x34, 0x56, 0x78, 0x02]
+        );
+        let actual: Message = bytes.read(&mut 0).unwrap();
+        assert_eq!(actual, expected);
+    }
+    #[test]
+    fn unsubscribe_encode_parse_id() {
+        let mut bytes = [0u8; 20];
+        let mut len = 0usize;
+        let mut flags = Flags::default();
+        flags.set_topic_id_type(0x2); // topic_id
+        let expected = Message::Unsubscribe(Unsubscribe {
+            flags,
+            msg_id: 0x1234,
+            topic: TopicNameOrId::Id(0x5678),
+        });
+        bytes.write(&mut len, expected.clone()).unwrap();
+        assert_eq_hex!(&bytes[..len], [0x07u8, 0x14, 0x02, 0x12, 0x34, 0x56, 0x78]);
+        let actual: Message = bytes.read(&mut 0).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn unsubscribe_encode_parse_name() {
+        let mut bytes = [0u8; 20];
+        let mut len = 0usize;
+        let expected = Message::Unsubscribe(Unsubscribe {
+            flags: Flags::default(),
+            msg_id: 0x1234,
+            topic: TopicNameOrId::Name("test".into()),
+        });
+        bytes.write(&mut len, expected.clone()).unwrap();
+        assert_eq_hex!(
+            &bytes[..len],
+            [0x09u8, 0x14, 0x00, 0x12, 0x34, b't', b'e', b's', b't']
+        );
+        let actual: Message = bytes.read(&mut 0).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn unsuback_encode_parse() {
+        let mut bytes = [0u8; 20];
+        let mut len = 0usize;
+        let expected = Message::UnsubAck(UnsubAck {
+            msg_id: 0x1234,
+            code: RejectedReason::InvalidTopicId.into(),
+        });
+        bytes.write(&mut len, expected.clone()).unwrap();
+        assert_eq_hex!(&bytes[..len], [0x05u8, 0x15, 0x12, 0x34, 0x02]);
         let actual: Message = bytes.read(&mut 0).unwrap();
         assert_eq!(actual, expected);
     }
