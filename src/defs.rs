@@ -12,7 +12,7 @@ pub trait MsgType {
     const MSG_TYPE: u8;
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Flags(u8);
 bitfield_bitrange! {struct Flags(u8)}
@@ -43,7 +43,7 @@ impl TryRead<'_> for Flags {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ReturnCode {
     Accepted,
@@ -89,7 +89,7 @@ impl TryRead<'_> for ReturnCode {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum RejectedReason {
     Congestion,
@@ -98,7 +98,7 @@ pub enum RejectedReason {
     Reserved(u8),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum MaybeForwardedMessage {
     ForwardedMessage(ForwardedMessage),
@@ -143,7 +143,7 @@ impl TryRead<'_> for MaybeForwardedMessage {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct ForwardedMessage {
     pub ctrl: u8,
@@ -229,7 +229,7 @@ impl TryRead<'_, usize> for WirelessNodeId {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Message {
     SearchGw(SearchGw),
@@ -386,7 +386,7 @@ impl TryRead<'_> for Message {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SearchGw {
     pub radius: u8,
@@ -417,7 +417,7 @@ impl TryRead<'_> for SearchGw {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct GwInfo {
     pub gw_id: u8,
@@ -448,7 +448,7 @@ impl TryRead<'_> for GwInfo {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Connect {
     pub flags: Flags,
@@ -544,7 +544,7 @@ impl TryRead<'_, usize> for ClientId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct ConnAck {
     pub code: ReturnCode,
@@ -575,7 +575,7 @@ impl TryRead<'_> for ConnAck {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Register {
     pub topic_id: u16,
@@ -671,7 +671,7 @@ impl TryRead<'_, usize> for TopicName {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct RegAck {
     pub topic_id: u16,
@@ -708,7 +708,7 @@ impl TryRead<'_> for RegAck {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Publish {
     pub flags: Flags,
@@ -804,7 +804,7 @@ impl TryRead<'_, usize> for PublishData {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct PubAck {
     pub topic_id: u16,
@@ -840,8 +840,9 @@ impl TryRead<'_> for PubAck {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[allow(clippy::large_enum_variant)]
 pub enum TopicNameOrId {
     Name(TopicName),
     Id(u16),
@@ -872,7 +873,7 @@ impl TryRead<'_, (Flags, usize)> for TopicNameOrId {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Subscribe {
     pub flags: Flags,
@@ -913,7 +914,7 @@ impl TryRead<'_> for Subscribe {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SubAck {
     pub flags: Flags,
@@ -956,7 +957,7 @@ impl TryRead<'_> for SubAck {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Unsubscribe {
     pub flags: Flags,
@@ -997,7 +998,7 @@ impl TryRead<'_> for Unsubscribe {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct UnsubAck {
     pub msg_id: u16,
@@ -1034,7 +1035,7 @@ impl TryRead<'_> for UnsubAck {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct PingReq {
     pub client_id: ClientId,
@@ -1071,7 +1072,7 @@ impl TryRead<'_> for PingReq {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct PingResp {}
 
