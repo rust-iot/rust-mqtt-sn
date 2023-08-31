@@ -21,4 +21,4 @@ defmt = { version = "0.3", optional = true }
 defmt-impl = ["defmt", "heapless/defmt-impl"]
 
 [dev-dependencies]
-assert_hex = "0.2"
+assert_hex = "0.3"
